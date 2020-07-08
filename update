@@ -1,0 +1,41 @@
+#!/bin/sh
+
+# --- Command line
+refname="$1"
+oldrev="$2"
+newrev="$3"
+
+ERROR=0
+
+# --- Safety check
+if [ -z "$GIT_DIR" ]; then
+	echo "Don't run this script from the command line." >&2
+	echo " (if you want, you could supply GIT_DIR then run" >&2
+	echo "  $0 <ref> <oldrev> <newrev>)" >&2
+	exit 1
+fi
+
+if [ -z "$refname" -o -z "$oldrev" -o -z "$newrev" ]; then
+	echo "usage: $0 <ref> <oldrev> <newrev>" >&2
+	exit 1
+fi
+
+# --- Loop through all commits
+for rev in `git rev-list --ancestry-path ${oldrev}..${newrev}`; do
+	# --- Loop through all files | only C or CPP files | do not check deleted files
+	for file in `git diff --name-status ${oldrev} ${rev} | grep -iP '.*\.(c|cpp|h|hpp)$' | grep -v '^D' | cut -f 2`; do
+		# --- Check if clang-format return error
+		git show ${rev}:${file} | clang-format --dry-run --Werror >/dev/null 2>&1
+		RET=$?
+		if [[ ${RET} != 0 ]]; then
+			echo [STYLE ERROR] commit: ${rev}, file: ${file}
+			ERROR=1
+		fi
+	done
+done
+
+if [[ ${ERROR} == 1 ]]; then
+	exit 1
+fi
+
+exit 0
