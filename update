@@ -24,7 +24,6 @@ prev_rev=${oldrev}
 
 # --- Loop through all commits in bacwards order (from down to top)
 for cur_rev in `git rev-list --ancestry-path ${oldrev}..${newrev} | tac`; do
-	echo "diff: ${prev_rev} ${cur_rev}"
 	for file in `git diff --name-status ${prev_rev} ${cur_rev} |
 		grep -iP '.*\.(c|cpp|h|hpp)$' |     # Valid file type
 		grep -v '^D' |                      # Skip deleted files
