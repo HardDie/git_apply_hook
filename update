@@ -20,21 +20,30 @@ if [ -z "$refname" -o -z "$oldrev" -o -z "$newrev" ]; then
 	exit 1
 fi
 
-# --- Loop through all commits
-for rev in `git rev-list --ancestry-path ${oldrev}..${newrev}`; do
-	# --- Loop through all files | only C or CPP files | do not check deleted files
-	for file in `git diff --name-status ${oldrev} ${rev} | grep -iP '.*\.(c|cpp|h|hpp)$' | grep -v '^D' | cut -f 2`; do
+prev_rev=${oldrev}
+
+# --- Loop through all commits in bacwards order (from down to top)
+for cur_rev in `git rev-list --ancestry-path ${oldrev}..${newrev} | tac`; do
+	echo "diff: ${prev_rev} ${cur_rev}"
+	for file in `git diff --name-status ${prev_rev} ${cur_rev} |
+		grep -iP '.*\.(c|cpp|h|hpp)$' |     # Valid file type
+		grep -v '^D' |                      # Skip deleted files
+		cut -f 2`; do                       # Remove status, get only file name
+
 		# --- Check if clang-format return error
-		git show ${rev}:${file} | clang-format --dry-run --Werror >/dev/null 2>&1
+		git show ${cur_rev}:${file} | clang-format --dry-run --Werror >/dev/null 2>&1
 		RET=$?
 		if [[ ${RET} != 0 ]]; then
-			echo [STYLE ERROR] commit: ${rev}, file: ${file}
+			echo [STYLE ERROR] commit: ${cur_rev}, file: ${file}
 			ERROR=1
 		fi
 	done
+
+	# Help variable: compare only two near commits
+	prev_rev=${cur_rev}
 done
 
-if [[ ${ERROR} == 1 ]]; then
+if [[ ${ERROR} != 0 ]]; then
 	exit 1
 fi
 
