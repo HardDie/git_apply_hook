@@ -5,6 +5,16 @@ refname="$1"
 oldrev="$2"
 newrev="$3"
 
+# --- Allow remove branches
+if [ $newrev == "0000000000000000000000000000000000000000" ]; then
+	exit 0
+fi
+
+# --- Temporary allow create new branches without validation
+if [ $oldrev == "0000000000000000000000000000000000000000" ]; then
+	exit 0
+fi
+
 ERROR=0
 
 # --- Safety check
@@ -25,7 +35,7 @@ prev_rev=${oldrev}
 # --- Loop through all commits in bacwards order (from down to top)
 for cur_rev in `git rev-list --ancestry-path ${oldrev}..${newrev} | tac`; do
 	for file in `git diff --name-status ${prev_rev} ${cur_rev} |
-		grep -iP '.*\.(c|cpp|h|hpp)$' |     # Valid file type
+		grep -iE '.*\.(c|cpp|h|hpp)$' |     # Valid file type
 		grep -v '^D' |                      # Skip deleted files
 		cut -f 2`; do                       # Remove status, get only file name
 
