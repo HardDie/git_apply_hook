@@ -1,4 +1,4 @@
-# git_apply_hook
+# git_update_hook
 
 Server side style validation hook<br>
 <br>
